@@ -1,0 +1,214 @@
+Pour modéliser ces entités avec SQLAlchemy en ajoutant les tables **Devis** (Quote) et **Compte** (Account), voici comment tu pourrais structurer ton schéma de base de données :
+
+### 1. **Définir les entités avec SQLAlchemy**
+
+#### **Modèle Freelancer**
+```python
+from sqlalchemy import Column, Integer, String, Text, Date
+from sqlalchemy.orm import relationship
+from database import Base
+
+class Freelancer(Base):
+    __tablename__ = 'freelancers'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String, index=True)
+    adresse = Column(String)
+    email = Column(String, unique=True, index=True)
+    numéroFiscal = Column(String)
+    téléphone = Column(String)
+    siteWeb = Column(String, nullable=True)
+    
+    # Relations
+    clients = relationship("Client", back_populates="freelancer")
+    factures = relationship("Facture", back_populates="freelancer")
+    devis = relationship("Devis", back_populates="freelancer")
+    comptes = relationship("Compte", back_populates="freelancer")
+```
+
+#### **Modèle Client**
+```python
+class Client(Base):
+    __tablename__ = 'clients'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String, index=True)
+    adresse = Column(String)
+    email = Column(String, unique=True, index=True)
+    téléphone = Column(String)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    freelancer = relationship("Freelancer", back_populates="clients")
+    factures = relationship("Facture", back_populates="client")
+```
+
+#### **Modèle Facture**
+```python
+class Facture(Base):
+    __tablename__ = 'factures'
+
+    id = Column(Integer, primary_key=True, index=True)
+    numéroFacture = Column(String, unique=True, index=True)
+    dateÉmission = Column(Date)
+    dateÉchéance = Column(Date)
+    montantTotal = Column(Integer)
+    statut = Column(String)  # Ex: payée, impayée, annulée
+    note = Column(Text, nullable=True)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    client_id = Column(Integer, ForeignKey('clients.id'))
+    freelancer = relationship("Freelancer", back_populates="factures")
+    client = relationship("Client", back_populates="factures")
+    lignes_facture = relationship("LigneFacture", back_populates="facture")
+    paiements = relationship("Paiement", back_populates="facture")
+```
+
+#### **Modèle Ligne de Facture**
+```python
+class LigneFacture(Base):
+    __tablename__ = 'lignes_facture'
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String)
+    quantite = Column(Integer)
+    prixUnitaire = Column(Integer)
+    montantTotal = Column(Integer)
+    
+    # Relations
+    facture_id = Column(Integer, ForeignKey('factures.id'))
+    facture = relationship("Facture", back_populates="lignes_facture")
+```
+
+#### **Modèle Paiement**
+```python
+class Paiement(Base):
+    __tablename__ = 'paiements'
+
+    id = Column(Integer, primary_key=True, index=True)
+    montant = Column(Integer)
+    datePaiement = Column(Date)
+    moyenPaiement = Column(String)
+    
+    # Relations
+    facture_id = Column(Integer, ForeignKey('factures.id'))
+    facture = relationship("Facture", back_populates="paiements")
+```
+
+#### **Modèle Produit ou Service**
+```python
+class ProduitService(Base):
+    __tablename__ = 'produits_services'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String, index=True)
+    prixUnitaire = Column(Integer)
+    description = Column(Text, nullable=True)
+    
+    # Relations
+    lignes_facture = relationship("LigneFacture", back_populates="produit_service")
+```
+
+#### **Modèle Rapport de Revenu**
+```python
+class RapportRevenu(Base):
+    __tablename__ = 'rapports_revenu'
+
+    id = Column(Integer, primary_key=True, index=True)
+    période = Column(String)  # Ex: "mensuel", "trimestriel", "annuel"
+    revenuTotal = Column(Integer)
+    facturesPayées = Column(Integer)
+    facturesEnAttente = Column(Integer)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    freelancer = relationship("Freelancer", back_populates="rapports_revenu")
+```
+
+#### **Modèle Dépense**
+```python
+class Dépense(Base):
+    __tablename__ = 'dépenses'
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String)
+    montant = Column(Integer)
+    dateDépense = Column(Date)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    freelancer = relationship("Freelancer", back_populates="dépenses")
+```
+
+#### **Modèle Devis**
+```python
+class Devis(Base):
+    __tablename__ = 'devis'
+
+    id = Column(Integer, primary_key=True, index=True)
+    numéroDevis = Column(String, unique=True, index=True)
+    dateÉmission = Column(Date)
+    dateÉchéance = Column(Date)
+    montantTotal = Column(Integer)
+    statut = Column(String)  # Ex: accepté, en attente, rejeté
+    note = Column(Text, nullable=True)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    freelancer = relationship("Freelancer", back_populates="devis")
+    lignes_devis = relationship("LigneDevis", back_populates="devis")
+```
+
+#### **Modèle Ligne de Devis**
+```python
+class LigneDevis(Base):
+    __tablename__ = 'lignes_devis'
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String)
+    quantité = Column(Integer)
+    prixUnitaire = Column(Integer)
+    montantTotal = Column(Integer)
+    
+    # Relations
+    devis_id = Column(Integer, ForeignKey('devis.id'))
+    devis = relationship("Devis", back_populates="lignes_devis")
+```
+
+#### **Modèle Compte**
+```python
+class Compte(Base):
+    __tablename__ = 'comptes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String)
+    solde = Column(Integer)
+    
+    # Relations
+    freelancer_id = Column(Integer, ForeignKey('freelancers.id'))
+    freelancer = relationship("Freelancer", back_populates="comptes")
+```
+
+### 2. **Définir les relations supplémentaires**
+
+Voici comment ajouter les relations entre les entités :
+
+```python
+# Dans le modèle Freelancer
+Freelancer.clients = relationship("Client", back_populates="freelancer")
+Freelancer.factures = relationship("Facture", back_populates="freelancer")
+Freelancer.devis = relationship("Devis", back_populates="freelancer")
+Freelancer.comptes = relationship("Compte", back_populates="freelancer")
+Freelancer.rapports_revenu = relationship("RapportRevenu", back_populates="freelancer")
+Freelancer.dépenses = relationship("Dépense", back_populates="freelancer")
+
+# Dans le modèle Facture
+Facture.lignes_facture = relationship("LigneFacture", back_populates="facture")
+Facture.paiements = relationship("Paiement", back_populates="facture")
+
+# Dans le modèle Devis
+Devis.lignes_devis = relationship("LigneDevis", back_populates="devis")
+```
+
+Ce schéma te permet de gérer efficacement les entités nécessaires pour un SaaS destiné aux indépendants, tout en intégrant les nouvelles tables **Devis** et **Compte**. Assure-toi de configurer correctement les relations et d'ajouter des indices sur les colonnes fréquemment utilisées pour les requêtes.
